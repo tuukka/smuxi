@@ -491,12 +491,6 @@ namespace Smuxi.Engine
                 } else {
                     person = personChat.Person;
                 }
-                
-                if (xmppMsg.Body != null) {
-                    var builder = CreateMessageBuilder();
-                    builder.AppendMessage(person, xmppMsg.Body);
-                    Session.AddMessageToChat(chat, builder.ToMessage());
-                }
                 chat = personChat;
             } else if (xmppMsg.Type == jabberMessageType.groupchat) {
                 string group_jid = xmppMsg.From.Bare;
@@ -511,12 +505,9 @@ namespace Smuxi.Engine
                 }
                 person = groupChat.GetPerson(xmppMsg.From.Resource);
                 if (person == null) {
-                    // FIXME happens in case of a delayed message and the participant has left meanwhile?
-                    //this.Session.AddTextToChat(_NetworkChat, "-!- Persons: " + groupChat.Persons);
-                    //this.Session.AddTextToChat(_NetworkChat, "-!- UnsafePersons: " + groupChat.UnsafePersons);
+                    // happens in case of a delayed message if the participant has left meanwhile
                     person = new PersonModel(xmppMsg.From.Resource, xmppMsg.From.Resource, 
                                              NetworkID, Protocol, this);
-                    // groupChat.UnsafePersons.Add(sender_jid, person);
                 }
                 chat = groupChat;
             }
