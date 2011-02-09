@@ -531,11 +531,11 @@ namespace Smuxi.Engine
                 
                 if (display) {
                     var builder = CreateMessageBuilder();
-                    if (stamp != null)
-                        builder.AppendMessage(person, "["+stamp+"] "+xmppMsg.Body); // FIXME make stamp semantic
-                    else
-                        builder.AppendMessage(person, xmppMsg.Body);
-                    Session.AddMessageToChat(chat, builder.ToMessage());
+                    builder.AppendMessage(person, xmppMsg.Body);
+                    var msg = builder.ToMessage();
+                    string format = DateTimeFormatInfo.InvariantInfo.UniversalSortableDateTimePattern.Replace(" ", "T");
+                    msg.TimeStamp = DateTime.ParseExact(stamp, format, null);
+                    Session.AddMessageToChat(chat, msg);
                 }
             }
         }
