@@ -61,7 +61,8 @@ namespace Smuxi.Engine
         private ConferenceManager _ConferenceManager;
         private FrontendManager _FrontendManager;
         private ChatModel       _NetworkChat;
-        
+        private int xmlStreamIndentLevel = 0;
+
         public override string NetworkID {
             get {
                 return "XMPP";
@@ -465,7 +466,47 @@ namespace Smuxi.Engine
         
         private void _OnReadText(object sender, string text)
         {
-            this.Session.AddTextToChat(_NetworkChat, "-!- RECV: " + text);
+            // simple pretty-printing
+            StringBuilder line = null;
+            foreach (var token in Regex.Split(text, @"(</|<|/>|>)")) {
+                if (line == null && token != "" && token != "</") {
+                    line = new StringBuilder().Append(' ',
+                                                      xmlStreamIndentLevel);
+                }
+
+                if (token == "<") {
+                    xmlStreamIndentLevel++;
+                    line.Append(token);
+                    continue;
+                } else if (token == "</") {
+                    if (line != null) {
+                        this.Session.AddTextToChat(_NetworkChat,
+                                                   "-!- RECV: " + line);
+                    }
+                    xmlStreamIndentLevel--;
+                    line = new StringBuilder().Append(' ',
+                                                      xmlStreamIndentLevel);
+                    line.Append(token);
+                    continue;
+                } else if (token == "/>") {
+                    xmlStreamIndentLevel--;
+                    line.Append(token);
+                } else if (token == ">") {
+                    line.Append(token);
+                } else if (token == "") {
+                    continue;
+                } else {
+                    line.Append(token);
+                    continue;
+                }
+
+                this.Session.AddTextToChat(_NetworkChat, "-!- RECV: " + line);
+                line = null;
+            }
+            if (line != null) {
+                // XXX incomplete line, would be better to save for later
+                this.Session.AddTextToChat(_NetworkChat, "-!- RECV: " + line);
+            }
         }
         
         private void _OnWriteText(object sender, string text)
