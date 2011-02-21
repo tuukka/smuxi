@@ -613,32 +613,30 @@ namespace Smuxi.Engine
                 Session.SyncChat(chat);
             }
 
-            PersonModel person;
             lock(chat.UnsafePersons) {
-                person = chat.GetPerson(nickname);
-                if (person != null) {
+                if (chat.UnsafePersons.ContainsKey(nickname)) {
                     return;
                 }
 
-                person = new PersonModel(nickname, nickname,
-                                         NetworkID, Protocol, this);
+                var person = new PersonModel(nickname, nickname,
+                                             NetworkID, Protocol, this);
                 chat.UnsafePersons.Add(nickname, person);
                 Session.AddPersonToGroupChat(chat, person);
             }
         }
-        
+
         public void OnParticipantLeave(Room room, RoomParticipant roomParticipant)
         {
             string jid = room.JID.Bare;
             var chat = (GroupChatModel) Session.GetChat(jid, ChatType.Group, this);
             string nickname = roomParticipant.Nick;
 
-            PersonModel person;
             lock(chat.UnsafePersons) {
-                person = chat.GetPerson(nickname);
-                if (person == null) {
+                if (!chat.UnsafePersons.ContainsKey(nickname)) {
                     return;
                 }
+
+                var person = chat.UnsafePersons[nickname];
 
                 chat.UnsafePersons.Remove(nickname);
                 Session.RemovePersonFromGroupChat(chat, person);
