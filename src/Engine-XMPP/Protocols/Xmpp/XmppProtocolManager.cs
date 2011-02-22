@@ -191,8 +191,8 @@ namespace Smuxi.Engine
         public override void CloseChat(FrontendManager fm, ChatModel chat)
         {
             Trace.Call(fm, chat);
-            
-            _ConferenceManager.GetRoom(chat.ID+"/"+_JabberClient.User).Leave("Closed");
+            var nick = ((XmppGroupChatModel chat).OurNick;
+            _ConferenceManager.GetRoom(chat.ID+"/"+nick).Leave("Closed");
         }
 
         public override void SetPresenceStatus(PresenceStatus status,
@@ -402,9 +402,14 @@ namespace Smuxi.Engine
         public void CommandJoin(CommandModel cd)
         {
             string jid = cd.DataArray[1];
+            // the resource part designates participant nick name
+            if (! jid.Contains("/")) {
+                // use user name as default nick name
+                jid += "/"+_JabberClient.User;
+            }
             ChatModel chat = GetChat(jid, ChatType.Group);
             if (chat == null) {
-                _ConferenceManager.GetRoom(jid+"/"+_JabberClient.User).Join();
+                _ConferenceManager.GetRoom(jid).Join();
             }
         }
 
@@ -415,9 +420,9 @@ namespace Smuxi.Engine
                 jid = cd.DataArray[1];
             else
                 jid = cd.Chat.ID;
-            ChatModel chat = GetChat(jid, ChatType.Group);
+            var chat = (XmppGroupChatModel) GetChat(jid, ChatType.Group);
             if (chat != null) {
-                _ConferenceManager.GetRoom(jid+"/"+_JabberClient.User).Leave("Part");
+                _ConferenceManager.GetRoom(jid+"/"+chat.OurNick).Leave("Part");
             }
         }
 
@@ -433,10 +438,13 @@ namespace Smuxi.Engine
             }
             
             string target = chat.ID;
+            string ourNick = _JabberClient.User;
             if (chat.ChatType == ChatType.Person) {
                 _JabberClient.Message(target, text);
             } else if (chat.ChatType == ChatType.Group) {
-                _ConferenceManager.GetRoom(target+"/"+_JabberClient.User).PublicMessage(text);
+                ourNick = ((XmppGroupChatModel) chat).OurNick;
+                var room = _ConferenceManager.GetRoom(target+"/"+ourNick);
+                room.PublicMessage(text);
                 return; // don't show now. the message will be echoed back if it's sent successfully
             }
             
@@ -448,7 +456,7 @@ namespace Smuxi.Engine
             msg.MessageParts.Add(msgPart);
             
             msgPart = new TextMessagePartModel();
-            msgPart.Text = _JabberClient.User;
+            msgPart.Text = ourNick;
             //msgPart.ForegroundColor = IrcTextColor.Blue;
             msgPart.ForegroundColor = new TextColor(0x0000FF);
             msg.MessageParts.Add(msgPart);
@@ -540,6 +548,7 @@ namespace Smuxi.Engine
                 if (groupChat == null) {
                     // FIXME shouldn't happen?
                     groupChat = new XmppGroupChatModel(group_jid, group_name, this);
+                    groupChat.OurNick = xmppMsg.From.Resource;
                     Session.AddChat(groupChat);
                     Session.SyncChat(groupChat);
                 }
@@ -605,10 +614,11 @@ namespace Smuxi.Engine
         private void AddPersonToGroup(Room room, string nickname)
         {
             string jid = room.JID.Bare;
-            var chat = (GroupChatModel) Session.GetChat(jid, ChatType.Group, this);
+            var chat = (XmppGroupChatModel) Session.GetChat(jid, ChatType.Group, this);
             // first notice we're joining a group chat is the participant info:
             if (chat == null) {
                 chat = new XmppGroupChatModel(jid, jid, this);
+                chat.OurNick = room.Nickname;
                 Session.AddChat(chat);
                 Session.SyncChat(chat);
             }
